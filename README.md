@@ -1,4 +1,4 @@
-# abswedge
+# gnubeans
 
 A tool to convert [GnuCash](https://www.gnucash.org/) ledger files to [Beancount](https://github.com/beancount/beancount) plain-text accounting format.
 

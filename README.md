@@ -32,7 +32,7 @@ GnuCash's business-accounting module (customers, vendors, invoices, purchase ord
 Clone the repository and install in editable mode:
 
 ```
-git clone https://github.com/PhilippeKlein/gnubeans.git
+git clone https://github.com/philippekl31n/gnubeans.git
 cd gnubeans
 pip install -e .
 ```

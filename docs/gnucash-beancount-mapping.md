@@ -28,7 +28,7 @@ The root `<gnc-v2>` element contains exactly one `<gnc:book>`, which holds all f
 
 GnuCash commodities fall into two classes by `cmdty:space`:
 
-- **`CURRENCY`** — ISO 4217 currency codes (`USD`, `GBP`, …). Beancount treats these as regular commodities; no `commodity` directive is required, but one may be added.
+- **`CURRENCY`** (or legacy **`ISO4217`**) — ISO 4217 currency codes (`USD`, `GBP`, …). The schema permits both namespace strings for currencies; modern GnuCash writes `CURRENCY`, older files may use `ISO4217`. Beancount treats these as regular commodities; no `commodity` directive is required, but one may be added.
 - **Non-`CURRENCY`** (e.g., `Vanguard`, `Fidelity`, `Robinhood`) — represent securities. These **do** warrant an explicit `commodity` directive.
 
 ### Field mapping
@@ -111,23 +111,30 @@ Accounts form a tree via `act:parent` references, but are stored flat. The full 
 
 ### Account type mapping
 
-GnuCash uses 13 `act:type` values. Beancount requires one of five root prefixes:
+The schema defines 20 `act:type` values. Beancount requires one of five root prefixes:
 
 | GnuCash `act:type` | Beancount root | Notes |
 |---|---|---|
 | `ROOT` | — | Synthetic root; not emitted as an account |
 | `ASSET` | `Assets` | Generic asset grouping |
 | `BANK` | `Assets` | Checking/savings accounts |
+| `CHECKING` | `Assets` | Checking account subtype — same mapping as `BANK` |
+| `SAVINGS` | `Assets` | Savings account subtype — same mapping as `BANK` |
 | `CASH` | `Assets` | Physical cash |
 | `RECEIVABLE` | `Assets` | Accounts receivable |
 | `STOCK` | `Assets` | Individual securities |
 | `MUTUAL` | `Assets` | Mutual funds / ETFs |
+| `MONEYMRKT` | `Assets` | Money market account — same mapping as `MUTUAL` |
+| `CURRENCY` | `Assets` | Foreign-currency holding account |
 | `LIABILITY` | `Liabilities` | Generic liability |
 | `CREDIT` | `Liabilities` | Credit cards |
+| `CREDITLINE` | `Liabilities` | Revolving line of credit — same mapping as `CREDIT` |
 | `PAYABLE` | `Liabilities` | Accounts payable |
 | `EQUITY` | `Equity` | Retained earnings, opening balances |
 | `INCOME` | `Income` | Revenue accounts |
 | `EXPENSE` | `Expenses` | Expenditure accounts |
+| `TRADING` | — | GnuCash trading accounts; only present when `options/Accounts/Use Trading Accounts = "t"`; no direct Beancount equivalent — see open decisions |
+| `NONE` | — | Unset/unknown type; flag for manual review |
 
 ### Field mapping
 
@@ -199,7 +206,7 @@ Each `<gnc:transaction>` becomes one Beancount transaction. Its child `<trn:spli
 
 ### Flag mapping
 
-GnuCash has no transaction-level status flag equivalent to Beancount's `*`/`!`. Use `*` for all transactions; if any split has `split:reconciled-state = n` (unreconciled), consider using `!`.
+GnuCash has no transaction-level status flag equivalent to Beancount's `*`/`!`. Use `*` for all transactions; if any split has `split:reconciled-state = n` (unreconciled), consider using `!`. Transactions where any split carries `v` (voided) require special handling — see open decisions.
 
 ### Split → posting field mapping
 
@@ -210,9 +217,11 @@ GnuCash has no transaction-level status flag equivalent to Beancount's `*`/`!`. 
 | `split:quantity` | Rational — units in the account's own commodity | Commodity units when different from `split:value` (securities, foreign currency) |
 | `split:memo` | Per-split free text | `; inline comment` or `memo:` posting metadata |
 | `split:action` | Label: `Buy`, `Sell`, `Div`, `Int`, `Reinvest`, … | `action:` posting metadata |
-| `split:reconciled-state` | `n` = unreconciled, `c` = cleared, `y` = reconciled | `reconciled:` posting metadata; `y`/`c` may inform `balance` assertions |
+| `split:reconciled-state` | `n` = unreconciled, `c` = cleared, `y` = reconciled, `f` = fiscally closed (period close), `v` = voided | `reconciled:` posting metadata; `y`/`c`/`f` may inform `balance` assertions; `v` requires special handling — see open decisions |
+| `split:reconcile-date` | Timestamp when split was reconciled | `reconcile-date:` posting metadata, or drop |
 | `split:id` | GUID | Dropped, or `gnucash-id:` metadata |
 | `split:lot` (GUID) | Cost-lot reference | Drives `{cost}` or `{cost, date, "label"}` annotation on the posting |
+| `split:slots` | KVP metadata on the individual split | Posting-level metadata; usually drop |
 
 ### Value vs. quantity: detecting commodity postings
 

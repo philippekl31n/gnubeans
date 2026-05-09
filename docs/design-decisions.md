@@ -163,6 +163,8 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 - How to sanitize GnuCash names to valid Beancount components (spaces→dashes, strip parens, capitalize — but what about collisions after sanitization?)
 - Whether to preserve the GnuCash hierarchy depth verbatim or flatten/restructure it
 - Whether placeholder (non-postable) accounts get `open` directives at all
+- How to map the `TRADING` account type — present when `options/Accounts/Use Trading Accounts = "t"`; Beancount has no equivalent construct and the booking model differs
+- How to handle `NONE`-typed accounts — the schema permits this value but GnuCash assigns no financial meaning to it
 
 ### Amounts & commodities
 - How to handle `cmdty:id` values that aren't valid Beancount symbols — e.g., `FUND-A` (dash mid-symbol is technically valid), `1234567` (starts with digit, which is invalid)
@@ -172,6 +174,7 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 - How to split GnuCash's single `trn:description` field into Beancount's optional payee + narration (always narration-only, heuristic split, or configurable?)
 - How to generate the capital-gains posting on security sales — GnuCash doesn't record it explicitly; Beancount requires the transaction to balance
 - How to handle the `template` commodity / scheduled-transaction splits that appear in the ledger
+- How to handle voided transactions (any split with `split:reconciled-state = v`) — options: drop silently, emit as a comment block, or emit as a flagged `!` transaction with a `voided:` note
 
 ### Lots & cost basis
 - Whether to track lots at all (full `{cost, date, "label"}`) or use a simpler `{cost}` annotation — depends on whether the output needs to support FIFO/LIFO queries
@@ -185,7 +188,7 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 
 ### Output structure
 - Single `.beancount` file vs. split by year/account-type with `include` directives
-- Whether to emit `option "operating_currency"` and `option "title"` from book metadata
+- Whether to emit `option "operating_currency"` and `option "title"` from book metadata. The schema confirms `gnc:book` has no dedicated title field — the only candidates are `book:id` (a GUID; not viable), `options/Business/Company Name` in `book:slots` (the authoritative human-readable name when present), and the input filename stem (always available as a fallback). Proposed rule: emit `option "title"` using `Company Name` when non-empty, falling back to the filename stem.
 
 ### Target beancount output version
 - Whether to expose a `--beancount-version [2|3]` flag or detect from the environment (e.g. shelling out to `bean-check --version` if on `$PATH`)

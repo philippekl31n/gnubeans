@@ -93,7 +93,7 @@ gnubeans ledger.gnucash --plan - | yq '.accounts |= ...' | gnubeans ledger.gnuca
 gnubeans ledger.gnucash --apply plan.yaml -o - | bean-check -
 ```
 
-**Default (interactive):** The tool parses the input, then at each judgment call presents its opinionated default and prompts for confirmation or override. Similar decisions are batched (e.g. all proposed account renames shown as a table — accept all or edit by number). After all decisions are confirmed, beancount output is written and the full set of decisions is saved to `<stem>.gnubeans.yaml` alongside the input file. On a subsequent run, if that file already exists it is loaded as the pre-filled defaults at each prompt.
+**Default (interactive):** The tool parses the input, then at each judgment call presents its opinionated default and prompts for confirmation or override. When a default is derived from one or more source values in the input file, all contributing sources are shown alongside the proposed default so the user has complete information. Similar decisions are batched (e.g. all proposed account renames shown as a table — accept all or edit by number). After all decisions are confirmed, beancount output is written and the full set of decisions is saved to `<stem>.gnubeans.yaml` alongside the input file. On a subsequent run, if that file already exists it is loaded as the pre-filled defaults at each prompt.
 
 **`--plan [filepath|-]`:** Non-interactive. Writes opinionated defaults to the plan YAML without prompting and exits — no beancount output is produced.
 
@@ -188,7 +188,21 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 
 ### Output structure
 - Single `.beancount` file vs. split by year/account-type with `include` directives
-- Whether to emit `option "operating_currency"` and `option "title"` from book metadata. The schema confirms `gnc:book` has no dedicated title field — the only candidates are `book:id` (a GUID; not viable), `options/Business/Company Name` in `book:slots` (the authoritative human-readable name when present), and the input filename stem (always available as a fallback). Proposed rule: emit `option "title"` using `Company Name` when non-empty, falling back to the filename stem.
+- Whether to emit `option "operating_currency"` and `option "title"` from book metadata. The schema confirms `gnc:book` has no dedicated title field — the only candidates are `book:id` (a GUID; not viable), `options/Business/Company Name` in `book:slots` (the authoritative human-readable name when present), and the input filename stem (always available as a fallback). Proposed rule: emit `option "title"` using `Company Name` when non-empty, falling back to the filename stem. In interactive mode both source values are shown alongside the proposal so the user can make an informed choice:
+  ```
+  Title for option "title"
+    Book → Company Name:  "" (not set)
+    Input filename stem:  "2025"
+    → Proposed: "2025"
+  Accept, or enter a value:
+  ```
+  In the plan YAML the same source values are preserved as comments so `--plan`/`--apply` users have equivalent context when reviewing the file before applying:
+  ```yaml
+  output:
+    # source: Book → Company Name: "" (not set)
+    # source: input filename stem: "2025"
+    title: "2025"
+  ```
 
 ### Target beancount output version
 - Whether to expose a `--beancount-version [2|3]` flag or detect from the environment (e.g. shelling out to `bean-check --version` if on `$PATH`)

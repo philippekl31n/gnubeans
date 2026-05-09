@@ -6,15 +6,15 @@
   but not as much as for a daily-use tool. Output quality and transparency about what was dropped/renamed matter a lot.                                                                                   
                                                                                                                                                                                                           
   Ideal installation:                                                                                                                                                                                     
-  pipx install abswedge                                                                                                                                                                                   
-  pipx is the modern standard for Python CLI tools — isolates dependencies, makes the command globally available, no virtualenv management. Publishing to PyPI gets you there. uv tool install abswedge is
+  pipx install gnubeans                                                                                                                                                                                   
+  pipx is the modern standard for Python CLI tools — isolates dependencies, makes the command globally available, no virtualenv management. Publishing to PyPI gets you there. uv tool install gnubeans is
    the emerging alternative for users on newer tooling.                                                                                                                                                   
                                                                                                                                                                                                           
   Ideal execution:                                                                                                                                                                                        
-  abswedge ledger.gnucash                                                                                                                                                                                   
+  gnubeans ledger.gnucash                                                                                                                                                                                   
   # writes 2025.beancount alongside the input, warnings to stderr                                                                                                                                         
   With stdout mode for composability:                                                                                                                                                                     
-  abswedge ledger.gnucash | bean-check -                                                                                                                                                                    
+  gnubeans ledger.gnucash | bean-check -                                                                                                                                                                    
                                                                                                                                                                                                           
   The input should be accepted in either form (.gnucash compressed or .gnucash.xml decompressed) transparently — the user shouldn't have to know or care about the internal format.                       
                                                                                                                                                                                                           

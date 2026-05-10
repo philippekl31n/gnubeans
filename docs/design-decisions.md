@@ -230,7 +230,9 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 
 ### Output structure
 - Single `.beancount` file vs. split by year/account-type with `include` directives
-- Whether to emit `option "operating_currency"` and `option "title"` from book metadata. The schema confirms `gnc:book` has no dedicated title field — the only candidates are `book:id` (a GUID; not viable), `options/Business/Company Name` in `book:slots` (the authoritative human-readable name when present), and the input filename stem (always available as a fallback). Proposed rule: emit `option "title"` using `Company Name` when non-empty, falling back to the filename stem. In interactive mode both source values are shown above the prompt (Rich), and the proposed value is pre-filled in the input field (questionary):
+- `option "title"` — resolved: emit using `options/Business/Company Name` from `book:slots` when non-empty, falling back to the input filename stem. In interactive mode both source values are shown above the prompt (Rich), and the proposed value is pre-filled in the input field (questionary):
+- `option "operating_currency"` — deferred: cannot be reliably inferred from book metadata alone (no currency signal exists at the book level in the schema). Emit only once account or commodity data is available to derive it from. Not part of root-element conversion output.
+- `option "title"` interactive prompt example:
   ```
     Company Name (book:slots)   not set
     Filename stem               2025

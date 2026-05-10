@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<gnc-v2
+     xmlns:gnc="http://www.gnucash.org/XML/gnc"
+     xmlns:book="http://www.gnucash.org/XML/book"
+     xmlns:cd="http://www.gnucash.org/XML/cd"
+     xmlns:slot="http://www.gnucash.org/XML/slot">
+<gnc:count-data cd:type="book">1</gnc:count-data>
+<gnc:book version="2.0.0">
+<book:id type="guid">4ad968fd0ff94c4591d32146e7c5d99f</book:id>
+<book:slots>
+  <slot>
+    <slot:key>options</slot:key>
+    <slot:value type="frame">
+      <slot>
+        <slot:key>Business</slot:key>
+        <slot:value type="frame">
+          <slot>
+            <slot:key>Company Name</slot:key>
+            <slot:value type="string">BayBook</slot:value>
+          </slot>
+        </slot:value>
+      </slot>
+    </slot:value>
+  </slot>
+</book:slots>
+</gnc:book>
+</gnc-v2>

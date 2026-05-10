@@ -14,7 +14,5 @@ def _render_commodity(c: Commodity) -> str:
     lines = [f'{_COMMODITY_DATE} commodity {c.id}\n']
     if c.name:
         lines.append(f'  name: "{c.name}"\n')
-    lines.append(f'  exchange: "{c.space}"\n')
-    if c.ticker:
-        lines.append(f'  ticker: "{c.ticker}"\n')
+    lines.append(f'  gnc_namespace: "{c.space}"\n')
     return ''.join(lines)

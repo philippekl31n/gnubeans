@@ -45,13 +45,13 @@ def test_commodity_name_parsed():
     assert vbmpx.name == "Vanguard Total Bond Market Index Fund Institutional Plus Shares"
 
 
-def test_commodity_ticker_from_user_symbol_slot():
+def test_commodity_user_symbol_parsed():
     book = parse(_xml("commodities.xml"), filename_stem=STEM)
     itot = next(c for c in book.commodities if c.id == "ITOT")
     assert itot.ticker == "ITOT"
 
 
-def test_commodity_ticker_absent_when_no_slot():
+def test_commodity_user_symbol_absent_when_no_slot():
     book = parse(_xml("commodities.xml"), filename_stem=STEM)
     vbmpx = next(c for c in book.commodities if c.id == "VBMPX")
     assert vbmpx.ticker == ""
@@ -73,26 +73,16 @@ def test_commodity_name_metadata():
     assert '  name: "Vanguard Total Bond Market Index Fund Institutional Plus Shares"\n' in output
 
 
-def test_commodity_exchange_metadata():
+def test_commodity_namespace_metadata():
     book = parse(_xml("commodities.xml"), filename_stem=STEM)
     output = render(book)
-    assert '  exchange: "Vanguard"\n' in output
+    assert '  gnc_namespace: "Vanguard"\n' in output
 
 
-def test_commodity_ticker_metadata_when_present():
+def test_exchange_key_not_in_output():
     book = parse(_xml("commodities.xml"), filename_stem=STEM)
     output = render(book)
-    assert '  ticker: "ITOT"\n' in output
-
-
-def test_commodity_ticker_metadata_absent_when_no_slot():
-    book = parse(_xml("commodities.xml"), filename_stem=STEM)
-    output = render(book)
-    # GLD has no user_symbol slot — no ticker: line should appear for it
-    gld_block = output[output.index("1900-01-01 commodity GLD\n"):]
-    next_directive = gld_block.find("\n1900-01-01", 1)
-    gld_section = gld_block[:next_directive] if next_directive != -1 else gld_block
-    assert "ticker:" not in gld_section
+    assert '  exchange:' not in output
 
 
 # ---------------------------------------------------------------------------

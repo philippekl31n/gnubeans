@@ -36,16 +36,16 @@ GnuCash commodities fall into two classes by `cmdty:space`:
 
 | GnuCash field | Notes | Beancount target |
 |---|---|---|
-| `cmdty:id` | Ticker/symbol (`VBMPX`, `USD`, …) | The commodity symbol on the `commodity` line. Must match `[A-Z][A-Z0-9'._\-]{0,23}` — characters outside that set need sanitizing. |
-| `cmdty:space` | Exchange/namespace (`Vanguard`, `CURRENCY`, …) | `exchange:` metadata field; omitted for CURRENCY-space entries (the value "CURRENCY" is meaningless as an exchange name) |
-| `cmdty:name` | Full name | `name:` metadata field. For CURRENCY-space entries GnuCash stores no name — looked up from ISO 4217 instead. |
-| `cmdty:fraction` | Smallest tradeable unit (100 = 0.01, 10000 = 0.0001) | Implicit in Beancount from the precision of amounts; no direct field, but guides rounding |
+| `cmdty:id` | Canonical exchange ticker (`VBMPX`, `USD`, …). Always present. | Proposed default Beancount currency when `user_symbol` is absent. Shown alongside `user_symbol` in the batch-decision table; user confirms or overrides per row. Must match `[A-Z][A-Z0-9'._\-]{0,23}` — values outside that set need sanitizing (e.g. `"1003057"` → `"C1003057"`). When the confirmed currency differs from `cmdty:id` (because `user_symbol` was confirmed, or sanitization was applied), `gnc_cmdty_id: "value"` is emitted as metadata on the `commodity` directive. |
+| `cmdty:space` | Namespace/exchange (`Vanguard`, `CURRENCY`, …) | `gnc_namespace:` metadata; omitted for CURRENCY-space entries ("CURRENCY" is not meaningful as a namespace value) |
+| `cmdty:name` | Full name | `name:` metadata (beancount-standard convention). For CURRENCY-space entries GnuCash stores no name — looked up from ISO 4217 instead. |
+| `cmdty:fraction` | Smallest tradeable unit (100 = 0.01, 10000 = 0.0001) | Implicit in Beancount from the precision of amounts; guides rounding but not directly emitted |
 | `cmdty:get_quotes` | Flag element — price fetching enabled | No equivalent; drop |
-| `cmdty:quote_source` | Price source string (`currency`, `yahoo`, …) | `quote-source:` metadata — preserved as informational (Beancount allows arbitrary custom metadata on `commodity` directives) |
+| `cmdty:quote_source` | Price source string (`currency`, `yahoo`, …) | `gnc_quote_source:` metadata — preserved as informational |
 | `cmdty:quote_tz` | Price timezone | No equivalent; drop |
-| `cmdty:xcode` | Exchange code (freeform — e.g. `MUTF`, `NYSEARCA`, `NASDAQ`) | `export:` metadata, constructed as `"XCODE:SYMBOL"` where SYMBOL is `cmdty:id`. Omitted when `cmdty:xcode` is absent. |
-| `cmdty:slots` → `user_symbol` | Display ticker (may differ from `cmdty:id`) | `ticker:` metadata |
-| — | `export:` beancount metadata | For CURRENCY-space commodities: always `export: "CASH"`. For securities: `export: "XCODE:SYMBOL"` when `cmdty:xcode` is present; omitted otherwise. |
+| `cmdty:xcode` | ISIN, CUSIP, or other identification code from the GnuCash Security Editor's optional code field. Not an exchange prefix. Rarely populated in practice. | Preserved as optional `gnc_cmdty_xcode:` metadata if the user uncomments it. Has no role in constructing the `export:` line — the beancount export exchange prefix (e.g. `MUTF`, `NYSEARCA`) has no source in GnuCash data and must always be supplied by the user. |
+| `cmdty:slots` → `user_symbol` | Optional display ticker set by the user in GnuCash; may differ from `cmdty:id` | **Proposed default** Beancount currency when present (shown alongside `cmdty:id` in the batch-decision table). When `user_symbol` is the confirmed currency, `gnc_cmdty_id:` is automatically emitted to preserve `cmdty:id`. `gnc_user_symbol:` is available as optional metadata if the user uncomments it. |
+| — | `export:` beancount metadata | CURRENCY-space: `export: "CASH"` emitted automatically. Securities: not emitted — a `# export: "<EXCHANGE_CODE>:cmdty:id"` suggestion is written in the plan YAML for every security; `<EXCHANGE_CODE>` is always a placeholder (no GnuCash source exists for the beancount export prefix). Plan YAML commodities section opens with a documentation header explaining `export:` values. |
 
 ### Example
 
@@ -61,7 +61,58 @@ GnuCash commodities fall into two classes by `cmdty:space`:
 ```beancount
 1900-01-01 commodity VBMPX
   name: "Vanguard Total Bond Market Index Fund Admiral Shares"
-  exchange: "Vanguard"
+  gnc_namespace: "Vanguard"
+```
+
+### Plan YAML: commodities section
+
+```yaml
+# commodities: Maps each GnuCash commodity to its Beancount output.
+#
+# Currency: the Beancount commodity identifier (beancount's term for any
+#   commodity, not only monetary currencies). Becomes the token after the
+#   date on the output commodity directive:  YYYY-MM-DD commodity <Currency>
+#   GnuCash user_symbol is proposed as the default Currency when present;
+#   cmdty:id otherwise. If cmdty:id is not a valid Beancount currency (e.g.
+#   starts with a digit) it is sanitized (e.g. "1003057" → "C1003057").
+#
+# gnc_cmdty_id: emitted automatically as beancount metadata when user_symbol
+#   is present in the GnuCash data (user_symbol becomes the Currency and
+#   cmdty:id is preserved) or when sanitization was applied. Commented
+#   (but available to uncomment) when cmdty:id equals the Currency.
+#
+# gnc_user_symbol, gnc_cmdty_xcode: commented by default; uncomment to emit
+#   as beancount metadata. Useful for preserving GnuCash source context if
+#   you edit the Currency (e.g. GLD → GOLD).
+#
+# export: (optional — uncomment to include in beancount output)
+#   Used by bean-report export_portfolio to generate OFX portfolio output.
+#   Format: "EXCHANGE_CODE:TICKER"
+#     EXCHANGE_CODE has no source in GnuCash data; must be supplied by the
+#     user (e.g. MUTF for US mutual funds, NYSEARCA for NYSE Arca ETFs).
+#     TICKER is GnuCash cmdty:id (see gnc_cmdty_id above).
+#   MUTF prefix → OFX BUYMF (mutual fund); all others → OFX BUYSTOCK.
+#   Special values:
+#     "CASH"                  – convert holding to cash-equivalent at export
+#     "IGNORE"                – exclude commodity from portfolio export
+#     "MUTF:SYM (MONEY:USD)"  – money-market fund; treated as cash-equivalent
+#   <EXCHANGE_CODE> is a placeholder; fill in or leave commented to omit.
+#   Reference: bean-report <file.beancount> export_portfolio [--debug]
+
+commodities:
+  VSCIX:
+    gnc_cmdty_id: "VSCIX-I"
+    # gnc_user_symbol: "VSCIX"
+    # export: "<EXCHANGE_CODE>:VSCIX-I"
+  VBMPX:
+    # gnc_cmdty_id: "VBMPX"
+    # export: "<EXCHANGE_CODE>:VBMPX"
+  GLD:
+    # gnc_cmdty_id: "GLD"
+    # export: "<EXCHANGE_CODE>:GLD"
+  C1003057:
+    gnc_cmdty_id: "1003057"
+    # export: "<EXCHANGE_CODE>:1003057"
 ```
 
 ---
@@ -347,7 +398,7 @@ Slots are GnuCash's general-purpose key-value store, attached to books, accounts
 | `import-map-bayes` | account/split | Drop |
 | `balance-limit` | account | Drop |
 | `color`, `tab-color` | account | Drop |
-| `user_symbol` | commodity | `ticker:` metadata |
+| `user_symbol` | commodity | Proposed default Beancount currency; when `user_symbol` is confirmed, `gnc_cmdty_id:` is auto-emitted. `gnc_user_symbol:` available as optional metadata. |
 | `title` | lot | Lot label in `{..., "label"}` |
 
 ---

@@ -16,6 +16,7 @@ validate = ["beancount"]
 
 [project.scripts]
 gnubeans = "gnubeans.cli:main"
+gnubeans-prototype = "gnubeans.tui_prototype:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

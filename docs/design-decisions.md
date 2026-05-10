@@ -210,7 +210,12 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 
 ### Amounts & commodities
 - How to handle `cmdty:id` values that aren't valid Beancount symbols — e.g., `FUND-A` (dash mid-symbol is technically valid), `1234567` (starts with digit, which is invalid)
-- Whether to emit `commodity` directives for CURRENCY-space entries or only for securities
+- Whether to emit `commodity` directives for CURRENCY-space entries or only for securities — resolved: single yes/no plan decision applied to all currencies at once. Interactive prompt shows which currencies were found; plan YAML key is `emit_currency_directives`. If enabled:
+  - `name:` sourced from ISO 4217 lookup (GnuCash stores no name for CURRENCY-space commodities)
+  - `exchange:` omitted ("CURRENCY" is not meaningful as an exchange name)
+  - `export: "CASH"` always emitted (every ISO 4217 currency is cash by definition)
+  - `quote-source:` emitted from `cmdty:quote_source` when present
+- `export:` metadata for securities — resolved: constructed as `"XCODE:SYMBOL"` from `cmdty:xcode` + `cmdty:id` when `cmdty:xcode` is present; omitted otherwise. No user input required.
 
 ### Transactions
 - How to split GnuCash's single `trn:description` field into Beancount's optional payee + narration (always narration-only, heuristic split, or configurable?)

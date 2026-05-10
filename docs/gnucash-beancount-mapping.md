@@ -28,22 +28,24 @@ The root `<gnc-v2>` element contains exactly one `<gnc:book>`, which holds all f
 
 GnuCash commodities fall into two classes by `cmdty:space`:
 
-- **`CURRENCY`** (or legacy **`ISO4217`**) — ISO 4217 currency codes (`USD`, `GBP`, …). The schema permits both namespace strings for currencies; modern GnuCash writes `CURRENCY`, older files may use `ISO4217`. Beancount treats these as regular commodities; no `commodity` directive is required, but one may be added.
+- **`CURRENCY`** (or legacy **`ISO4217`**) — ISO 4217 currency codes (`USD`, `GBP`, …). The schema permits both namespace strings for currencies; modern GnuCash writes `CURRENCY`, older files may use `ISO4217`. Beancount treats these as regular commodities; no `commodity` directive is required, but one may be added. Whether to emit them is a single yes/no plan decision applied to all currencies in the file (see *Output structure* in design decisions).
 - **Non-`CURRENCY`** (e.g., `Vanguard`, `Fidelity`, `Robinhood`) — represent securities. These **do** warrant an explicit `commodity` directive.
+- **`template`** — GnuCash internal commodity used for scheduled transactions. Always dropped; no Beancount equivalent.
 
 ### Field mapping
 
 | GnuCash field | Notes | Beancount target |
 |---|---|---|
 | `cmdty:id` | Ticker/symbol (`VBMPX`, `USD`, …) | The commodity symbol on the `commodity` line. Must match `[A-Z][A-Z0-9'._\-]{0,23}` — characters outside that set need sanitizing. |
-| `cmdty:space` | Exchange/namespace (`Vanguard`, `CURRENCY`, …) | `exchange:` metadata field on the `commodity` directive |
-| `cmdty:name` | Full name | `name:` metadata field |
+| `cmdty:space` | Exchange/namespace (`Vanguard`, `CURRENCY`, …) | `exchange:` metadata field; omitted for CURRENCY-space entries (the value "CURRENCY" is meaningless as an exchange name) |
+| `cmdty:name` | Full name | `name:` metadata field. For CURRENCY-space entries GnuCash stores no name — looked up from ISO 4217 instead. |
 | `cmdty:fraction` | Smallest tradeable unit (100 = 0.01, 10000 = 0.0001) | Implicit in Beancount from the precision of amounts; no direct field, but guides rounding |
-| `cmdty:get_quotes` | Flag element — price fetching enabled | No equivalent; informational |
-| `cmdty:quote_source` | Price source string (`currency`, `yahoo`, …) | No equivalent; informational |
-| `cmdty:quote_tz` | Price timezone | No equivalent |
-| `cmdty:xcode` | Exchange code | `export-symbol:` or custom metadata |
+| `cmdty:get_quotes` | Flag element — price fetching enabled | No equivalent; drop |
+| `cmdty:quote_source` | Price source string (`currency`, `yahoo`, …) | `quote-source:` metadata — preserved as informational (Beancount allows arbitrary custom metadata on `commodity` directives) |
+| `cmdty:quote_tz` | Price timezone | No equivalent; drop |
+| `cmdty:xcode` | Exchange code (freeform — e.g. `MUTF`, `NYSEARCA`, `NASDAQ`) | `export:` metadata, constructed as `"XCODE:SYMBOL"` where SYMBOL is `cmdty:id`. Omitted when `cmdty:xcode` is absent. |
 | `cmdty:slots` → `user_symbol` | Display ticker (may differ from `cmdty:id`) | `ticker:` metadata |
+| — | `export:` beancount metadata | For CURRENCY-space commodities: always `export: "CASH"`. For securities: `export: "XCODE:SYMBOL"` when `cmdty:xcode` is present; omitted otherwise. |
 
 ### Example
 

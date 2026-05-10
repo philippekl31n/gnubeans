@@ -1,2 +1,8 @@
 *.gnucash
 *.gnucash.xml
+__pycache__/
+*.pyc
+
+# Synthetic test fixtures are not personal data and are tracked
+!tests/fixtures/*.gnucash
+!tests/fixtures/*.gnucash.xml

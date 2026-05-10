@@ -1,4 +1,32 @@
+import re
+
 from gnubeans.model import Book
+
+# Beancount currency spec: starts with [A-Z], ends with [A-Z0-9],
+# middle chars in [A-Z0-9'._-], total length 1–24.
+_VALID_CURRENCY = re.compile(r"^[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9]$|^[A-Z]$")
+
+
+def is_valid_beancount_currency(value: str) -> bool:
+    """Return True if value is a valid Beancount currency symbol (checked as-is)."""
+    return bool(_VALID_CURRENCY.match(value.strip()))
+
+
+def _validate_currency(value: str) -> bool | str:
+    """questionary validate callback: return True or a human-readable error.
+
+    Normalises to uppercase before checking so the user may type in any case.
+    """
+    v = value.strip().upper()
+    if not v:
+        return "Symbol cannot be empty"
+    if is_valid_beancount_currency(v):
+        return True
+    return (
+        f'"{v}" is not a valid Beancount symbol — '
+        f'must start with a letter, end with a letter or digit, '
+        f'contain only [A-Z0-9\'._-], and be at most 24 characters'
+    )
 
 
 def prompt_commodity_symbols(book: Book) -> dict[str, str]:
@@ -6,6 +34,7 @@ def prompt_commodity_symbols(book: Book) -> dict[str, str]:
     Present the commodity symbol batch-decision table and return confirmed symbols.
 
     Returns {original_cmdty_id: confirmed_beancount_currency}.
+    Invalid replacements are rejected by the prompt and re-requested.
     """
     from rich.console import Console
     from rich.table import Table
@@ -58,6 +87,7 @@ def prompt_commodity_symbols(book: Book) -> dict[str, str]:
             new_val = questionary.text(
                 f'  Row {idx + 1} ({row["original"]}) — Beancount symbol:',
                 default=row['proposed'],
+                validate=_validate_currency,
             ).ask()
             if new_val and new_val.strip():
                 confirmed[row['original']] = new_val.strip().upper()

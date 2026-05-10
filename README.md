@@ -87,3 +87,18 @@ By default output is written alongside the input file. Use `-o` to redirect:
 gnubeans ledger.gnucash -o /tmp/ledger.beancount
 gnubeans ledger.gnucash --apply plan.yaml -o /tmp/ledger.beancount
 ```
+
+## Development
+
+Install the package in editable mode, then install pytest:
+
+```
+pip install -e .
+pip install pytest
+```
+
+Run the test suite:
+
+```
+pytest
+```

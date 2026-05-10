@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<gnc-v2
+     xmlns:gnc="http://www.gnucash.org/XML/gnc"
+     xmlns:book="http://www.gnucash.org/XML/book"
+     xmlns:cd="http://www.gnucash.org/XML/cd"
+     xmlns:cmdty="http://www.gnucash.org/XML/cmdty"
+     xmlns:slot="http://www.gnucash.org/XML/slot">
+<gnc:count-data cd:type="book">1</gnc:count-data>
+<gnc:book version="2.0.0">
+<book:id type="guid">4ad968fd0ff94c4591d32146e7c5d99f</book:id>
+<book:slots>
+  <slot>
+    <slot:key>options</slot:key>
+    <slot:value type="frame">
+      <slot>
+        <slot:key>Business</slot:key>
+        <slot:value type="frame">
+          <slot>
+            <slot:key>Company Name</slot:key>
+            <slot:value type="string">BayBook</slot:value>
+          </slot>
+        </slot:value>
+      </slot>
+    </slot:value>
+  </slot>
+</book:slots>
+<gnc:count-data cd:type="commodity">4</gnc:count-data>
+<gnc:commodity version="2.0.0">
+  <cmdty:space>Vanguard</cmdty:space>
+  <cmdty:id>VBMPX</cmdty:id>
+  <cmdty:name>Vanguard Total Bond Market Index Fund Institutional Plus Shares</cmdty:name>
+  <cmdty:fraction>10000</cmdty:fraction>
+  <cmdty:get_quotes/>
+  <cmdty:quote_source>yahoo</cmdty:quote_source>
+  <cmdty:quote_tz/>
+</gnc:commodity>
+<gnc:commodity version="2.0.0">
+  <cmdty:space>ETrade</cmdty:space>
+  <cmdty:id>GLD</cmdty:id>
+  <cmdty:name>SPDR Gold Trust (ETF)</cmdty:name>
+  <cmdty:fraction>10000</cmdty:fraction>
+</gnc:commodity>
+<gnc:commodity version="2.0.0">
+  <cmdty:space>ETrade</cmdty:space>
+  <cmdty:id>ITOT</cmdty:id>
+  <cmdty:name>iShares Core S&amp;P Total U.S. Stock Market ETF</cmdty:name>
+  <cmdty:fraction>10000</cmdty:fraction>
+  <cmdty:slots>
+    <slot>
+      <slot:key>user_symbol</slot:key>
+      <slot:value type="string">ITOT</slot:value>
+    </slot>
+  </cmdty:slots>
+</gnc:commodity>
+<gnc:commodity version="2.0.0">
+  <cmdty:space>template</cmdty:space>
+  <cmdty:id>template</cmdty:id>
+  <cmdty:name>template</cmdty:name>
+  <cmdty:fraction>1</cmdty:fraction>
+</gnc:commodity>
+</gnc:book>
+</gnc-v2>

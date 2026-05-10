@@ -6,7 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "gnubeans"
 version = "2026.05.dev1"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "rich>=13",
+    "questionary>=2",
+]
 
 [project.optional-dependencies]
 validate = ["beancount"]

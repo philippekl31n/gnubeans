@@ -93,7 +93,7 @@ gnubeans ledger.gnucash --plan - | yq '.accounts |= ...' | gnubeans ledger.gnuca
 gnubeans ledger.gnucash --apply plan.yaml -o - | bean-check -
 ```
 
-**Default (interactive):** The tool parses the input, then at each judgment call presents its opinionated default and prompts for confirmation or override. When a default is derived from one or more source values in the input file, all contributing sources are shown alongside the proposed default so the user has complete information. Similar decisions are batched (e.g. all proposed account renames shown as a table — accept all or edit by number). After all decisions are confirmed, beancount output is written and the full set of decisions is saved to `<stem>.gnubeans.yaml` alongside the input file. On a subsequent run, if that file already exists it is loaded as the pre-filled defaults at each prompt.
+**Default (interactive):** The tool parses the input, then at each judgment call presents its opinionated default and prompts for confirmation or override. Context is rendered by **Rich**; prompts are handled by **questionary** (see *TUI libraries*). When a default is derived from one or more source values in the input file, all contributing sources are shown above the prompt so the user has complete information. Similar decisions are batched (e.g. all proposed account renames shown as a Rich table — accept all or edit by number). After all decisions are confirmed, beancount output is written and the full set of decisions is saved to `<stem>.gnubeans.yaml` alongside the input file. On a subsequent run, if that file already exists it is loaded as the pre-filled defaults at each prompt.
 
 **`--plan [filepath|-]`:** Non-interactive. Writes opinionated defaults to the plan YAML without prompting and exits — no beancount output is produced.
 
@@ -106,6 +106,48 @@ A pure two-phase (plan-then-convert) flow is auditable and scriptable but adds f
 `--apply` pairs naturally with `--plan` (generate vs. apply) and follows the convention established by tools like Terraform. `--config` was considered but rejected as it conventionally implies tool configuration rather than a user-generated data file.
 
 `-` as a filepath meaning stdin/stdout is a standard Unix convention. TTY detection is avoided in favour of explicit opt-in, keeping output destination predictable regardless of how the tool is invoked.
+
+---
+
+## TUI libraries
+
+### Decision
+
+**Rich** + **questionary** are core dependencies.
+
+- **Rich** renders all formatted output: source-value context before prompts, batch-decision tables, warnings, and the final conversion summary.
+- **questionary** handles all interactive input: text fields (with pre-filled defaults), confirmations, and indexed-row editing for batch decisions. It is built on prompt_toolkit and provides the `?`-prefixed prompt style that is the de facto standard in modern Python CLIs.
+
+Both are unconditional dependencies — not optional extras — because interactive mode is the default execution path.
+
+The general prompt pattern is:
+
+```
+  <source label 1>   <source value 1>       ← Rich: dim label, normal value
+  <source label 2>   <source value 2>
+
+? <Decision label>: <proposed default>›     ← questionary text prompt, default pre-filled
+```
+
+For batch decisions a Rich table with indexed rows is shown first, followed by a questionary confirmation:
+
+```
+  ┌─────┬─────────────────────────────────────┬───────────────────────────────────┐
+  │  #  │ GnuCash name                        │ Proposed Beancount name           │
+  ├─────┼─────────────────────────────────────┼───────────────────────────────────┤
+  │  1  │ Chase Total Checking (2930)         │ Chase-Total-Checking-2930         │
+  │  2  │ Vanguard Total Bond Market …        │ Vanguard-Total-Bond-Market-…      │
+  └─────┴─────────────────────────────────────┴───────────────────────────────────┘
+? Accept all, or enter row numbers to edit (e.g. 1,3): ›
+```
+
+### Rationale
+
+Rich is the Python standard for terminal output formatting and is actively maintained by Textualize. questionary is the most ergonomic Python prompt library; its API is a thin, idiomatic layer over prompt_toolkit. Together they cover the full interactive surface without overlapping.
+
+Textual (Textualize's full TUI widget framework) was considered and rejected: it is designed for persistent, application-like UIs, whereas gnubeans needs a linear, top-to-bottom prompt flow that completes and exits — the same usage model questionary is built for.
+
+prompt_toolkit directly was considered but rejected in favour of questionary's higher-level API, which handles cursor positioning, default pre-filling, and keyboard shortcuts without boilerplate.
 
 ---
 
@@ -188,19 +230,18 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 
 ### Output structure
 - Single `.beancount` file vs. split by year/account-type with `include` directives
-- Whether to emit `option "operating_currency"` and `option "title"` from book metadata. The schema confirms `gnc:book` has no dedicated title field — the only candidates are `book:id` (a GUID; not viable), `options/Business/Company Name` in `book:slots` (the authoritative human-readable name when present), and the input filename stem (always available as a fallback). Proposed rule: emit `option "title"` using `Company Name` when non-empty, falling back to the filename stem. In interactive mode both source values are shown alongside the proposal so the user can make an informed choice:
+- Whether to emit `option "operating_currency"` and `option "title"` from book metadata. The schema confirms `gnc:book` has no dedicated title field — the only candidates are `book:id` (a GUID; not viable), `options/Business/Company Name` in `book:slots` (the authoritative human-readable name when present), and the input filename stem (always available as a fallback). Proposed rule: emit `option "title"` using `Company Name` when non-empty, falling back to the filename stem. In interactive mode both source values are shown above the prompt (Rich), and the proposed value is pre-filled in the input field (questionary):
   ```
-  Title for option "title"
-    Book → Company Name:  "" (not set)
-    Input filename stem:  "2025"
-    → Proposed: "2025"
-  Accept, or enter a value:
+    Company Name (book:slots)   not set
+    Filename stem               2025
+
+  ? Book title: 2025›
   ```
   In the plan YAML the same source values are preserved as comments so `--plan`/`--apply` users have equivalent context when reviewing the file before applying:
   ```yaml
   output:
-    # source: Book → Company Name: "" (not set)
-    # source: input filename stem: "2025"
+    # Company Name (book:slots): not set
+    # Filename stem: "2025"
     title: "2025"
   ```
 

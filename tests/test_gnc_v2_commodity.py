@@ -29,6 +29,16 @@ def test_template_commodity_excluded():
     assert not any(c.space == "template" for c in book.commodities)
 
 
+def test_iso4217_currency_not_parsed_as_security():
+    # ISO4217 is the legacy currency namespace (schema-valid; modern GnuCash
+    # uses CURRENCY). Both identify monetary currencies, not securities, so
+    # neither appears in book.commodities — they are handled separately by
+    # the emit_currency_directives plan decision.
+    xml = commodity_xml("ISO4217", "GBP")
+    book = parse(xml, filename_stem=STEM)
+    assert book.commodities == []
+
+
 # ---------------------------------------------------------------------------
 # Parsing: commodity fields
 # ---------------------------------------------------------------------------

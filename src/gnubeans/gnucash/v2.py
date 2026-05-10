@@ -30,12 +30,24 @@ def parse(xml: bytes, filename_stem: str) -> Book:
 
 def _parse_commodities(book_el) -> list[Commodity]:
     result = []
+    seen: dict[str, str] = {}  # beancount_id -> first original cmdty:id
+
     for el in book_el.findall(f'{{{_GNC}}}commodity'):
         space = _text(el, f'{{{_CMDTY}}}space')
         if space in _CURRENCY_SPACES or space == _TEMPLATE_SPACE:
             continue
         raw_id = _text(el, f'{{{_CMDTY}}}id')
         beancount_id, gnc_id = _sanitize_id(raw_id)
+
+        if beancount_id in seen:
+            print(
+                f'WARNING: collision — "{seen[beancount_id]}" and "{raw_id}"'
+                f' both produce the Beancount currency "{beancount_id}".'
+                f' Assign distinct symbols in the plan.',
+                file=sys.stderr,
+            )
+
+        seen.setdefault(beancount_id, raw_id)
         result.append(Commodity(
             space=space,
             id=beancount_id,
@@ -43,6 +55,13 @@ def _parse_commodities(book_el) -> list[Commodity]:
             user_symbol=_cmdty_user_symbol(el),
             gnc_id=gnc_id,
         ))
+
+    # Tag all commodities whose beancount_id appears more than once
+    colliding = {c.id for c in result
+                 if sum(1 for x in result if x.id == c.id) > 1}
+    for c in result:
+        c.collision = c.id in colliding
+
     return result
 
 

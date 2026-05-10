@@ -1,4 +1,5 @@
 """Shared test helpers for building minimal gnc-v2 XML fixtures."""
+from xml.sax.saxutils import escape as _e
 
 
 _BOOK_OPEN = """\
@@ -31,21 +32,21 @@ def commodity_xml(
     lines = [
         _BOOK_OPEN,
         '<gnc:commodity version="2.0.0">\n',
-        f'  <cmdty:space>{space}</cmdty:space>\n',
-        f'  <cmdty:id>{cmdty_id}</cmdty:id>\n',
+        f'  <cmdty:space>{_e(space)}</cmdty:space>\n',
+        f'  <cmdty:id>{_e(cmdty_id)}</cmdty:id>\n',
     ]
     if name:
-        lines.append(f'  <cmdty:name>{name}</cmdty:name>\n')
+        lines.append(f'  <cmdty:name>{_e(name)}</cmdty:name>\n')
     lines.append('  <cmdty:fraction>10000</cmdty:fraction>\n')
     if quote_source:
         lines.append('  <cmdty:get_quotes/>\n')
-        lines.append(f'  <cmdty:quote_source>{quote_source}</cmdty:quote_source>\n')
+        lines.append(f'  <cmdty:quote_source>{_e(quote_source)}</cmdty:quote_source>\n')
         lines.append('  <cmdty:quote_tz/>\n')
     if user_symbol:
         lines.append('  <cmdty:slots>\n')
         lines.append('    <slot>\n')
         lines.append('      <slot:key>user_symbol</slot:key>\n')
-        lines.append(f'      <slot:value type="string">{user_symbol}</slot:value>\n')
+        lines.append(f'      <slot:value type="string">{_e(user_symbol)}</slot:value>\n')
         lines.append('    </slot>\n')
         lines.append('  </cmdty:slots>\n')
     lines.append('</gnc:commodity>\n')

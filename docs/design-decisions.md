@@ -209,13 +209,11 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 - How to handle `NONE`-typed accounts — the schema permits this value but GnuCash assigns no financial meaning to it
 
 ### Amounts & commodities
-- How to handle `cmdty:id` values that aren't valid Beancount symbols — e.g., `FUND-A` (dash mid-symbol is technically valid), `1234567` (starts with digit, which is invalid)
-- Whether to emit `commodity` directives for CURRENCY-space entries or only for securities — resolved: single yes/no plan decision applied to all currencies at once. Interactive prompt shows which currencies were found; plan YAML key is `emit_currency_directives`. If enabled:
-  - `name:` sourced from ISO 4217 lookup (GnuCash stores no name for CURRENCY-space commodities)
-  - `exchange:` omitted ("CURRENCY" is not meaningful as an exchange name)
-  - `export: "CASH"` always emitted (every ISO 4217 currency is cash by definition)
-  - `quote-source:` emitted from `cmdty:quote_source` when present
-- `export:` metadata for securities — resolved: constructed as `"XCODE:SYMBOL"` from `cmdty:xcode` + `cmdty:id` when `cmdty:xcode` is present; omitted otherwise. No user input required.
+- `cmdty:id` sanitization — resolved: invalid characters replaced with dashes, consecutive dashes collapsed, leading/trailing punctuation stripped, lowercase uppercased, digit-leading prefixed with `C`, truncated to 24 chars. Mid-dash symbols (e.g. `VSCIX-I`) are valid per spec and pass through unchanged. Warning emitted to stderr using "suggesting" phrasing since the user can override in interactive/plan mode.
+- Collision after sanitization — open: two different GnuCash IDs that produce the same beancount currency after sanitization need detection, user-facing warning, and mandatory plan-level resolution before `--apply`.
+- Whether to emit `commodity` directives for CURRENCY-space entries or only for securities — resolved: single yes/no plan decision (`emit_currency_directives`) applied to all currencies at once. If enabled: `name:` from ISO 4217 lookup; `gnc_namespace:` omitted; `export: "CASH"` always emitted; `gnc_quote_source:` from `cmdty:quote_source` when present.
+- `export:` metadata for securities — resolved: not emitted by gnubeans; a `# export: "<EXCHANGE_CODE>:cmdty:id"` suggestion is written as a comment in the plan YAML. EXCHANGE_CODE has no source in GnuCash data and must always be supplied by the user.
+- Beancount commodity symbol (Currency) selection — resolved: batch plan decision. `user_symbol` proposed as default when present; sanitized `cmdty:id` otherwise. Both shown in Rich table; user confirms or overrides per row. `gnc_cmdty_id:` auto-emitted as metadata when confirmed currency differs from original `cmdty:id`.
 
 ### Transactions
 - How to split GnuCash's single `trn:description` field into Beancount's optional payee + narration (always narration-only, heuristic split, or configurable?)

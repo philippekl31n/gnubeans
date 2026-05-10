@@ -53,7 +53,13 @@ def commodity_plan_yaml(book: Book, confirmed: dict[str, str]) -> str:
         original = c.gnc_id if c.gnc_id else c.id
         currency = confirmed.get(original, c.user_symbol if c.user_symbol else c.id)
 
-        lines.append(f'  {currency}:\n')
+        if c.collision:
+            lines.append(
+                f'  {currency}:  # COLLISION — this symbol is shared by multiple'
+                f' GnuCash commodities. Assign a unique symbol before applying.\n'
+            )
+        else:
+            lines.append(f'  {currency}:\n')
 
         if original != currency:
             lines.append(f'    gnc_cmdty_id: "{original}"\n')

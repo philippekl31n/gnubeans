@@ -1,10 +1,23 @@
 import re
+from collections import defaultdict
 
 from gnubeans.model import Book
 
 # Beancount currency spec: starts with [A-Z], ends with [A-Z0-9],
 # middle chars in [A-Z0-9'._-], total length 1–24.
 _VALID_CURRENCY = re.compile(r"^[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9]$|^[A-Z]$")
+
+
+def find_symbol_collisions(confirmed: dict[str, str]) -> dict[str, list[str]]:
+    """
+    Return {currency: [original_id, ...]} for every currency that appears
+    more than once in the confirmed mapping — i.e. collisions that must be
+    resolved before rendering.
+    """
+    inverted: dict[str, list[str]] = defaultdict(list)
+    for original, currency in confirmed.items():
+        inverted[currency].append(original)
+    return {sym: ids for sym, ids in inverted.items() if len(ids) > 1}
 
 
 def is_valid_beancount_currency(value: str) -> bool:
@@ -75,21 +88,40 @@ def prompt_commodity_symbols(book: Book) -> dict[str, str]:
     ).ask()
 
     if not answer or not answer.strip():
-        return confirmed
+        pass
+    else:
+        for part in answer.split(','):
+            part = part.strip()
+            if not part.isdigit():
+                continue
+            idx = int(part) - 1
+            if 0 <= idx < len(rows):
+                row = rows[idx]
+                new_val = questionary.text(
+                    f'  Row {idx + 1} ({row["original"]}) — Beancount symbol:',
+                    default=row['proposed'],
+                    validate=_validate_currency,
+                ).ask()
+                if new_val and new_val.strip():
+                    confirmed[row['original']] = new_val.strip().upper()
 
-    for part in answer.split(','):
-        part = part.strip()
-        if not part.isdigit():
-            continue
-        idx = int(part) - 1
-        if 0 <= idx < len(rows):
-            row = rows[idx]
-            new_val = questionary.text(
-                f'  Row {idx + 1} ({row["original"]}) — Beancount symbol:',
-                default=row['proposed'],
-                validate=_validate_currency,
-            ).ask()
-            if new_val and new_val.strip():
-                confirmed[row['original']] = new_val.strip().upper()
+    # Re-prompt until all collisions are resolved
+    while True:
+        collisions = find_symbol_collisions(confirmed)
+        if not collisions:
+            break
+        console.print(
+            '\n[bold yellow]Unresolved collisions — assign a unique symbol for each:[/]'
+        )
+        for symbol, originals in collisions.items():
+            console.print(f'  [red]{symbol}[/] is shared by: {originals}')
+            for original in originals:
+                new_val = questionary.text(
+                    f'  New symbol for "{original}":',
+                    default=confirmed[original],
+                    validate=_validate_currency,
+                ).ask()
+                if new_val and new_val.strip():
+                    confirmed[original] = new_val.strip().upper()
 
     return confirmed

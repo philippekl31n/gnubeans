@@ -1,5 +1,5 @@
-"""Tests for interactive mode currency validation."""
-from gnubeans.interactive import is_valid_beancount_currency, _validate_currency
+"""Tests for interactive mode currency validation and collision helpers."""
+from gnubeans.interactive import is_valid_beancount_currency, _validate_currency, find_symbol_collisions
 
 
 # ---------------------------------------------------------------------------
@@ -76,3 +76,34 @@ def test_validate_accepts_lowercase_by_uppercasing():
 
 def test_validate_strips_whitespace_before_checking():
     assert _validate_currency("  VBMPX  ") is True
+
+
+# ---------------------------------------------------------------------------
+# find_symbol_collisions
+# ---------------------------------------------------------------------------
+
+def test_find_symbol_collisions_empty_when_no_collision():
+    confirmed = {"VBMPX": "VBMPX", "GLD": "GLD"}
+    assert find_symbol_collisions(confirmed) == {}
+
+def test_find_symbol_collisions_identifies_duplicate():
+    confirmed = {"AT&T": "AT-T", "AT[T]": "AT-T"}
+    result = find_symbol_collisions(confirmed)
+    assert "AT-T" in result
+    assert set(result["AT-T"]) == {"AT&T", "AT[T]"}
+
+def test_find_symbol_collisions_excludes_non_colliders():
+    confirmed = {"AT&T": "AT-T", "AT[T]": "AT-T", "GLD": "GLD"}
+    result = find_symbol_collisions(confirmed)
+    assert "GLD" not in result
+    assert len(result) == 1
+
+def test_find_symbol_collisions_multiple_collision_groups():
+    confirmed = {"A1": "X", "A2": "X", "B1": "Y", "B2": "Y"}
+    result = find_symbol_collisions(confirmed)
+    assert set(result.keys()) == {"X", "Y"}
+
+def test_find_symbol_collisions_three_way():
+    confirmed = {"A": "SAME", "B": "SAME", "C": "SAME"}
+    result = find_symbol_collisions(confirmed)
+    assert set(result["SAME"]) == {"A", "B", "C"}

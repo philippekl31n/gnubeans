@@ -127,3 +127,33 @@ def test_render_succeeds_when_collision_resolved():
     output = render(book, commodity_symbols=confirmed)
     assert "1900-01-01 commodity ATT\n" in output
     assert "1900-01-01 commodity AT-T\n" in output
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: parse → resolve → render with correct metadata
+# ---------------------------------------------------------------------------
+
+def test_e2e_resolved_collision_emits_gnc_cmdty_id_for_both():
+    xml = _two_commodity_xml("NYSE", "AT&T", "NYSE", "AT[T]")
+    book = parse(xml, filename_stem=STEM)
+    confirmed = {"AT&T": "ATT", "AT[T]": "ATBT"}
+    output = render(book, commodity_symbols=confirmed)
+    assert '  gnc_cmdty_id: "AT&T"\n' in output
+    assert '  gnc_cmdty_id: "AT[T]"\n' in output
+
+
+def test_e2e_resolved_collision_emits_correct_directive_lines():
+    xml = _two_commodity_xml("NYSE", "AT&T", "NYSE", "AT[T]")
+    book = parse(xml, filename_stem=STEM)
+    confirmed = {"AT&T": "ATT", "AT[T]": "ATBT"}
+    output = render(book, commodity_symbols=confirmed)
+    assert "1900-01-01 commodity ATT\n" in output
+    assert "1900-01-01 commodity ATBT\n" in output
+
+
+def test_e2e_no_collision_renders_without_gnc_cmdty_id():
+    xml = _two_commodity_xml("Vanguard", "VBMPX", "ETrade", "GLD")
+    book = parse(xml, filename_stem=STEM)
+    confirmed = {"VBMPX": "VBMPX", "GLD": "GLD"}
+    output = render(book, commodity_symbols=confirmed)
+    assert "gnc_cmdty_id" not in output

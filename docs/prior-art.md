@@ -16,13 +16,6 @@ Before writing tests for any new schema element, research these tools for edge c
 
 Researched against the three converters above. Gaps are listed in order of priority.
 
-### High priority
-
-| Gap | Notes |
-|---|---|
-| Collision after sanitization | Two different GnuCash IDs sanitizing to the same beancount currency (e.g. `AT&T` and `AT_T` both → `AT-T`; or `1003057` and a pre-existing `C1003057`). None of the prior art tools handle this well; needs detection, warning, and mandatory plan-level resolution. |
-| `ISO4217` space filtered same as `CURRENCY` | Implemented (`_CURRENCY_SPACES = {'CURRENCY', 'ISO4217'}`) but no test covering the `ISO4217` path explicitly. |
-
 ### Medium priority
 
 | Gap | Notes |

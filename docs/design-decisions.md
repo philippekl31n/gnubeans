@@ -256,6 +256,12 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 - Whether to expose a `--beancount-version [2|3]` flag or detect from the environment (e.g. shelling out to `bean-check --version` if on `$PATH`)
 - Default version if unspecified (2 is the conservative choice; 3 is the emerging standard)
 
+### Empty field suppression
+
+**Decision:** Never emit a metadata line — in beancount output or in the plan YAML — when its value is empty. Fields sourced via the XML text helper (`_text()`) return `''` when the element is absent or carries no content; the schema marks many fields as optional and GnuCash does not always populate them. An empty metadata value is meaningless and produces noise in the output.
+
+**Rule:** Every metadata emission is guarded by a truthiness check on the value before writing. This applies to both the beancount renderer and the plan YAML generator. The `name:` guard (`if c.name:`) is the established pattern; all other fields follow the same convention.
+
 ### Error handling
 - Fail-fast on unexpected data vs. warn-and-skip with a report at the end
 

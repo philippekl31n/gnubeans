@@ -1,3 +1,5 @@
+import re
+import sys
 import xml.etree.ElementTree as ET
 
 from gnubeans.model import Book, Commodity
@@ -9,6 +11,11 @@ _SLOT  = 'http://www.gnucash.org/XML/slot'
 
 _CURRENCY_SPACES = {'CURRENCY', 'ISO4217'}
 _TEMPLATE_SPACE  = 'template'
+
+# Characters valid in non-first, non-last positions per beancount spec
+_INVALID_CHARS = re.compile(r"[^A-Z0-9'._-]")
+# Punctuation characters that are invalid in first or last position
+_EDGE_PUNCT = "-.'_"
 
 
 def parse(xml: bytes, filename_stem: str) -> Book:
@@ -27,13 +34,59 @@ def _parse_commodities(book_el) -> list[Commodity]:
         space = _text(el, f'{{{_CMDTY}}}space')
         if space in _CURRENCY_SPACES or space == _TEMPLATE_SPACE:
             continue
+        raw_id = _text(el, f'{{{_CMDTY}}}id')
+        beancount_id, gnc_id = _sanitize_id(raw_id)
         result.append(Commodity(
             space=space,
-            id=_text(el, f'{{{_CMDTY}}}id'),
+            id=beancount_id,
             name=_text(el, f'{{{_CMDTY}}}name'),
-            ticker=_cmdty_user_symbol(el),
+            user_symbol=_cmdty_user_symbol(el),
+            gnc_id=gnc_id,
         ))
     return result
+
+
+def _sanitize_id(raw: str) -> tuple[str, str]:
+    """Return (beancount_currency, original) where original is non-empty if sanitized."""
+    # 1. Uppercase
+    s = raw.upper()
+
+    # 2. Replace characters outside [A-Z0-9'._-] with dashes
+    s = _INVALID_CHARS.sub('-', s)
+
+    # 3. Collapse consecutive dashes produced by replacement
+    s = re.sub(r'-{2,}', '-', s)
+
+    # 4. Strip leading/trailing punctuation (invalid at first/last position)
+    s = s.strip(_EDGE_PUNCT)
+
+    # 5. Guard against empty result
+    if not s:
+        s = 'C'
+
+    # 6. First character must be a letter; prefix C if it is a digit
+    if s[0].isdigit():
+        s = 'C' + s
+
+    # 7. Truncate to 24 characters
+    s = s[:24]
+
+    # 8. After truncation, last character must be [A-Z0-9]; strip if not
+    s = s.rstrip(_EDGE_PUNCT)
+
+    # 9. Final guard against empty result
+    if not s:
+        s = 'C'
+
+    if s == raw:
+        return raw, ''
+
+    print(
+        f'WARNING: commodity "{raw}" is not a valid Beancount symbol'
+        f' — suggesting "{s}"',
+        file=sys.stderr,
+    )
+    return s, raw
 
 
 def _cmdty_user_symbol(commodity_el) -> str:

@@ -93,7 +93,7 @@ gnubeans ledger.gnucash --plan - | yq '.accounts |= ...' | gnubeans ledger.gnuca
 gnubeans ledger.gnucash --apply plan.yaml -o - | bean-check -
 ```
 
-**Default (interactive):** The tool parses the input, then at each judgment call presents its opinionated default and prompts for confirmation or override. Context is rendered by **Rich**; prompts are handled by **questionary** (see *TUI libraries*). When a default is derived from one or more source values in the input file, all contributing sources are shown above the prompt so the user has complete information. Similar decisions are batched (e.g. all proposed account renames shown as a Rich table — accept all or edit by number). After all decisions are confirmed, beancount output is written and the full set of decisions is saved to `<stem>.gnubeans.yaml` alongside the input file. On a subsequent run, if that file already exists it is loaded as the pre-filled defaults at each prompt.
+**Default (interactive):** The tool parses the input, then at each judgment call presents its opinionated default and prompts for confirmation or override. Context is rendered by **Rich**; all interactive UI is handled by **Textual** (see *TUI libraries*). When a default is derived from one or more source values in the input file, all contributing sources are shown above the prompt so the user has complete information. Similar decisions are batched (e.g. all proposed account renames shown in a `DataTable` — navigate pages, edit by row, accept all). After all decisions are confirmed, beancount output is written and the full set of decisions is saved to `<stem>.gnubeans.yaml` alongside the input file. On a subsequent run, if that file already exists it is loaded as the pre-filled defaults at each prompt.
 
 **`--plan [filepath|-]`:** Non-interactive. Writes opinionated defaults to the plan YAML without prompting and exits — no beancount output is produced.
 
@@ -113,41 +113,40 @@ A pure two-phase (plan-then-convert) flow is auditable and scriptable but adds f
 
 ### Decision
 
-**Rich** + **questionary** are core dependencies.
+**Rich** + **Textual** are core dependencies. **questionary** is not used.
 
-- **Rich** renders all formatted output: source-value context before prompts, batch-decision tables, warnings, and the final conversion summary.
-- **questionary** handles all interactive input: text fields (with pre-filled defaults), confirmations, and indexed-row editing for batch decisions. It is built on prompt_toolkit and provides the `?`-prefixed prompt style that is the de facto standard in modern Python CLIs.
+- **Rich** renders all non-interactive output: source-value context shown before decisions, warnings, conversion summaries, and plan YAML previews. Rich is a direct dependency of Textual; its renderables work natively inside Textual widgets.
+- **Textual** handles all interactive UI. Simple single-question decisions use lightweight inline apps via `App.run(inline=True)`, which render a compact widget in-place without full-screen takeover. Batch decisions use Textual's `DataTable` for persistent, in-place cell navigation and editing.
 
-Both are unconditional dependencies — not optional extras — because interactive mode is the default execution path.
+Both are unconditional dependencies because interactive mode is the default execution path.
 
-The general prompt pattern is:
+### Interaction model
 
-```
-  <source label 1>   <source value 1>       ← Rich: dim label, normal value
-  <source label 2>   <source value 2>
-
-? <Decision label>: <proposed default>›     ← questionary text prompt, default pre-filled
-```
-
-For batch decisions a Rich table with indexed rows is shown first, followed by a questionary confirmation:
+**Single-question decisions** (e.g. `option "title"`, yes/no confirmations):
 
 ```
-  ┌─────┬─────────────────────────────────────┬───────────────────────────────────┐
-  │  #  │ GnuCash name                        │ Proposed Beancount name           │
-  ├─────┼─────────────────────────────────────┼───────────────────────────────────┤
-  │  1  │ Chase Total Checking (2930)         │ Chase-Total-Checking-2930         │
-  │  2  │ Vanguard Total Bond Market …        │ Vanguard-Total-Bond-Market-…      │
-  └─────┴─────────────────────────────────────┴───────────────────────────────────┘
-? Accept all, or enter row numbers to edit (e.g. 1,3): ›
+  Company Name (book:slots)   not set        ← Rich: dim label, normal value
+  Filename stem               2025
+
+  Book title: 2025▌                          ← Textual Input, value pre-filled
 ```
+
+**Batch decisions** (e.g. commodity symbols, account names):
+
+The `DataTable` is always visible above an `Input` area. The table has exactly one editable column (the proposed value). The `Input` operates in two modes with different arrow-key semantics, because focus lives in different places in each:
+
+- **Row-selection mode** — Focus is in the `Input` field. Up/down arrows scroll the `DataTable` viewport a full page (a single-line `Input` has no use for up/down), allowing the user to scan rows that extend beyond the viewport before deciding what to edit. Typing a row number and pressing Enter fast-jumps to that row and activates cell-edit mode. `a` accepts all when no unresolved rows remain. PageUp/PageDown also scroll the viewport.
+- **Cell-edit mode** — Focus shifts to the selected row's editable cell. Up/down arrows move the `DataTable` cursor row-by-row (Textual's default DataTable navigation, preserved). The `Input` shows the current cell value pre-filled; a label shows `Enter to confirm · Esc to cancel`. Validation runs on every keypress: a red error replaces the instruction line and Enter is blocked until the value is valid. Esc returns to row-selection mode without committing. PageUp/PageDown scroll the viewport in this mode too.
+
+The table updates in place after each confirmed edit, with collision and validation status re-evaluated reactively. A status bar shows position and remaining work: `Row 47 of 252 · 18 unresolved`.
 
 ### Rationale
 
-Rich is the Python standard for terminal output formatting and is actively maintained by Textualize. questionary is the most ergonomic Python prompt library; its API is a thin, idiomatic layer over prompt_toolkit. Together they cover the full interactive surface without overlapping.
+**Why Textual instead of questionary:** prototyping the batch-decision widget revealed that the "linear, top-to-bottom prompt flow" assumption was wrong for batch decisions. The commodity, account, and transaction decision tables require a persistent editor: the table stays visible, a row is highlighted, its value is edited with live validation feedback, the table updates in place, and the user moves to the next row. questionary's sequential prompts produce the opposite: prompts stack vertically, the table scrolls off screen, and error messages add new lines rather than overwriting. Keeping questionary for simple prompts while using Textual for batch decisions would produce a stylistically fragmented experience — two visual languages, two key-binding conventions, two testing frameworks.
 
-Textual (Textualize's full TUI widget framework) was considered and rejected: it is designed for persistent, application-like UIs, whereas gnubeans needs a linear, top-to-bottom prompt flow that completes and exits — the same usage model questionary is built for.
+**Why not prompt_toolkit directly:** prompt_toolkit's `Application` API can achieve the same layout, but requires hand-building DataTable, cursor navigation, cell focus, validation display, and key bindings from low-level primitives. All of these ship as tested, documented widgets in Textual. The resulting bespoke code would be complex and fragile against prompt_toolkit version changes.
 
-prompt_toolkit directly was considered but rejected in favour of questionary's higher-level API, which handles cursor positioning, default pre-filling, and keyboard shortcuts without boilerplate.
+**questionary** was the initial choice, later superseded. It is removed as a dependency.
 
 ---
 
@@ -233,7 +232,7 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 
 ### Output structure
 - Single `.beancount` file vs. split by year/account-type with `include` directives
-- `option "title"` — resolved: emit using `options/Business/Company Name` from `book:slots` when non-empty, falling back to the input filename stem. In interactive mode both source values are shown above the prompt (Rich), and the proposed value is pre-filled in the input field (questionary):
+- `option "title"` — resolved: emit using `options/Business/Company Name` from `book:slots` when non-empty, falling back to the input filename stem. In interactive mode both source values are shown above the prompt (Rich), and the proposed value is pre-filled in the Textual `Input` field:
 - `option "operating_currency"` — deferred: cannot be reliably inferred from book metadata alone (no currency signal exists at the book level in the schema). Emit only once account or commodity data is available to derive it from. Not part of root-element conversion output.
 - `option "title"` interactive prompt example:
   ```
@@ -259,6 +258,9 @@ Automated version derivation from git tags (`hatch-vcs`, `setuptools-scm`) is no
 **Decision:** Never emit a metadata line — in beancount output or in the plan YAML — when its value is empty. Fields sourced via the XML text helper (`_text()`) return `''` when the element is absent or carries no content; the schema marks many fields as optional and GnuCash does not always populate them. An empty metadata value is meaningless and produces noise in the output.
 
 **Rule:** Every metadata emission is guarded by a truthiness check on the value before writing. This applies to both the beancount renderer and the plan YAML generator. The `name:` guard (`if c.name:`) is the established pattern; all other fields follow the same convention.
+
+### Batch-decision table sort order
+- Whether unresolved rows (collisions, invalid values) should float to the top of the `DataTable` or remain in their original document order. Floating gives faster resolution — the user sees what needs attention immediately without paging. Document order preserves the user's mental model of the file structure and makes it easier to cross-reference with the source. A hybrid (sort unresolved to top, stable within each group) is also possible.
 
 ### Error handling
 - Fail-fast on unexpected data vs. warn-and-skip with a report at the end
